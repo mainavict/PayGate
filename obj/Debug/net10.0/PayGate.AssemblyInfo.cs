@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PayGate")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22e221d0960845b8f6c17c17c4b19a3b479531a8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c44e7c3234c1219838713e513ef8af2e471c66c5")]
 [assembly: System.Reflection.AssemblyProductAttribute("PayGate")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PayGate")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
