@@ -6,37 +6,40 @@ using PayGate.Services.Interfaces;
 
 namespace PayGate.Services.Implementation;
 
-public class DarajaService : IDarajaService
+public class DarajaService: IDarajaService
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<DarajaService> _logger;
-
-    public DarajaService(HttpClient httpClient, ILogger<DarajaService> logger)
+    private   readonly  ILogger<DarajaService> _logger;
+    
+    public  DarajaService(HttpClient httpClient, ILogger<DarajaService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
     }
-
+    
     public async Task<string> GetAccessTokenAsync(string consumerKey, string consumerSecret, string baseUrl)
     {
-        // Combine the keys for Basic Authentication
+        if (string.IsNullOrEmpty(consumerKey) || string.IsNullOrEmpty(consumerSecret))
+            throw new Exception("Daraja Consumer Key or Secret is missing.");
+
         var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{consumerKey}:{consumerSecret}"));
         
-        // Set up the request
-        var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/oauth/v1/generate?grant_type=client_credentials");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        // Use DefaultRequestHeaders like the reference code
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
 
-        // Send the request
-        var response = await _httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-
-        // Read the response
-        var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
+        var response = await _httpClient.GetAsync($"{baseUrl}/oauth/v1/generate?grant_type=client_credentials");
         
-        // Extract the access token
-        return json.RootElement.GetProperty("access_token").GetString() 
-            ?? throw new Exception("Failed to get access token from Daraja.");
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Failed to get access token. Status: {response.StatusCode}. Error: {errorContent}");
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JsonElement>(content);
+        
+        return result.GetProperty("access_token").GetString() 
+            ?? throw new Exception("Failed to extract access_token from Daraja response.");
     }
 
     public async Task<DarajaStkPushResponse> SendStkPushAsync(
@@ -44,23 +47,31 @@ public class DarajaService : IDarajaService
         string accessToken, 
         DarajaStkPushRequest request)
     {
-        // Set up the request with the Bearer token
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/mpesa/stkpush/v1/processrequest");
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        
-        // Add the JSON body
-        httpRequest.Content = JsonContent.Create(request);
+        // Clear any previous headers and set the Bearer token
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        // Send the request
-        var response = await _httpClient.SendAsync(httpRequest);
-        
-        // Read the response
+        // Serialize the request
+        var json = JsonSerializer.Serialize(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        _logger.LogInformation("📡 Sending STK Push to: {Url}", $"{baseUrl}/mpesa/stkpush/v1/processrequest");
+        _logger.LogInformation("📡 Request Body: {Body}", json);
+
+        var response = await _httpClient.PostAsync($"{baseUrl}/mpesa/stkpush/v1/processrequest", content);
         var responseContent = await response.Content.ReadAsStringAsync();
-        
-        // Map it to our DTO
+
+        _logger.LogInformation("📡 Daraja STK Push Response Status: {StatusCode}", response.StatusCode);
+        _logger.LogInformation("📡 Daraja STK Push Response Body: {Body}", responseContent);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("❌ Daraja STK Push FAILED: {Error}", responseContent);
+            throw new Exception($"Daraja API Error ({response.StatusCode}): {responseContent}");
+        }
+
         return JsonSerializer.Deserialize<DarajaStkPushResponse>(responseContent, new JsonSerializerOptions 
         { 
             PropertyNameCaseInsensitive = true 
-        }) ?? throw new Exception("Failed to deserialize Daraja response.");
+        }) ?? throw new Exception("Failed to parse STK push response.");
     }
 }

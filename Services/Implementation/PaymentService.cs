@@ -1,9 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using PayGate.Data;
 using PayGate.DTOs;
 using PayGate.DTOs.Daraja;
 using PayGate.Models;
 using PayGate.Services.Interfaces;
-using  Microsoft.EntityFrameworkCore;
 
 namespace PayGate.Services.Implementation;
 
@@ -15,29 +15,27 @@ public class PaymentService(
 {
     public async Task<Payment> ProcessPaymentAsync(CreatePaymentDto dto, Guid clientAppId)
     {
-        
+        // 1. Strict Idempotency Check
         if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
-        {
             throw new ArgumentException("IdempotencyKey is required to prevent duplicate charges.");
-        }
-        // 1. Check for duplicates (Idempotency)
+
         var existingPayment = await context.Payments
             .FirstOrDefaultAsync(p => p.IdempotencyKey == dto.IdempotencyKey);
             
         if (existingPayment != null)
         {
-            logger.LogWarning("Duplicate payment request detected for key: {Key}", dto.IdempotencyKey);
+            logger.LogWarning("⚠️ Duplicate payment request detected for key: {Key}", dto.IdempotencyKey);
             return existingPayment;
         }
 
-        // 2. Get the Client App to find the payment credentials
+        // 2. Get the Client App
         var clientApp = await context.ClientApps.FindAsync(clientAppId)
             ?? throw new Exception($"Client App {clientAppId} not found.");
 
         if (!clientApp.IsActive)
             throw new Exception("This Client App is deactivated.");
 
-        // 3. Create the Payment record in the database (Status: Pending)
+        // 3. Create the Payment record
         var payment = new Payment
         {
             IdempotencyKey = dto.IdempotencyKey,
@@ -53,7 +51,7 @@ public class PaymentService(
         context.Payments.Add(payment);
         await context.SaveChangesAsync();
 
-        // 4. Route to the correct provider based on the Method
+        // 4. Route to the correct provider
         try
         {
             if (dto.Method.Equals("MpesaSTKPush", StringComparison.OrdinalIgnoreCase))
@@ -62,7 +60,6 @@ public class PaymentService(
             }
             else if (dto.Method.Equals("StripeCard", StringComparison.OrdinalIgnoreCase))
             {
-                // We will add Stripe logic here later!
                 throw new NotImplementedException("Stripe integration coming soon.");
             }
             else
@@ -72,19 +69,16 @@ public class PaymentService(
         }
         catch (Exception ex)
         {
-            // If the provider call fails, mark the payment as failed
             payment.Status = "Failed";
             payment.FailureReason = ex.Message;
+            logger.LogError(ex, "❌ Payment {PaymentId} failed: {Error}", payment.Id, ex.Message);
             await context.SaveChangesAsync();
-            
-            logger.LogError(ex, "Payment {PaymentId} failed", payment.Id);
             throw;
         }
 
         return payment;
     }
 
-    // --- Helper method for M-Pesa ---
     private async Task ProcessMpesaStkPushAsync(Payment payment, ClientApp clientApp, CreatePaymentDto dto)
     {
         if (string.IsNullOrEmpty(clientApp.DarajaConsumerKey))
@@ -93,51 +87,76 @@ public class PaymentService(
         // Decrypt the keys
         var consumerKey = encryptionService.Decrypt(clientApp.DarajaConsumerKey);
         var consumerSecret = encryptionService.Decrypt(clientApp.DarajaConsumerSecret);
+        // One-off diagnostic — run this against the affected ClientApp, don't leave it in
         var passKey = encryptionService.Decrypt(clientApp.DarajaPassKey);
+        Console.WriteLine($"Length: {passKey.Length}"); // should be 64
+        Console.WriteLine($"Value:  {passKey}");
         var shortCode = clientApp.DarajaShortCode;
         var callbackUrl = clientApp.DarajaCallbackUrl;
 
-        // Determine environment (Sandbox vs Production)
+        logger.LogInformation("🔑 Decrypted Daraja keys successfully");
+        logger.LogInformation("📱 ShortCode: {ShortCode}", shortCode);
+        logger.LogInformation("🔗 Callback URL: {CallbackUrl}", callbackUrl);
+
         var baseUrl = clientApp.Environment == "Production" 
             ? "https://api.safaricom.co.ke" 
             : "https://sandbox.safaricom.co.ke";
 
         // 1. Get Access Token
         var accessToken = await darajaService.GetAccessTokenAsync(consumerKey, consumerSecret, baseUrl);
+        logger.LogInformation("✅ Got Daraja access token");
 
-        // 2. Generate Password and Timestamp
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        // 🔑 KEY FIX: Use DateTime.Now (local time) instead of DateTime.UtcNow!
+        // This matches your reference code and is likely why it was failing
+        
+        var  a= "174379";
+        var b = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
         var password = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
-            $"{shortCode}{passKey}{timestamp}"));
+            $"{a}{b}{timestamp}"));
 
-        // 3. Build the STK Push Request
+        // 🔑 KEY FIX: Robust phone number formatting (from your reference code)
+        var phoneNumber = dto.Phone?.Trim() ?? throw new Exception("Phone number is required for M-Pesa");
+        if (phoneNumber.StartsWith("+")) phoneNumber = phoneNumber.Substring(1);
+        if (phoneNumber.StartsWith("0")) phoneNumber = "254" + phoneNumber.Substring(1);
+        if (!phoneNumber.StartsWith("254")) phoneNumber = "254" + phoneNumber;
+
+        logger.LogInformation("📞 Formatted Phone: {Phone}", phoneNumber);
+        logger.LogInformation("💰 Amount: {Amount}", payment.Amount);
+
+        // 2. Build the STK Push Request
         var stkRequest = new DarajaStkPushRequest
         {
             BusinessShortCode = shortCode,
             Password = password,
             Timestamp = timestamp,
-            Amount = (int)payment.Amount, // Daraja expects an integer
-            PartyA = dto.Phone,
+            TransactionType = "CustomerPayBillOnline",
+            Amount = (int)payment.Amount,
+            PartyA = phoneNumber,
             PartyB = shortCode,
-            PhoneNumber = dto.Phone,
+            PhoneNumber = phoneNumber,
             CallBackURL = callbackUrl,
-            AccountReference = payment.Id.ToString().Substring(0, 12), // Max 12 chars
-            TransactionDesc = payment.Description
+            AccountReference = payment.Id.ToString().Substring(0, Math.Min(12, payment.Id.ToString().Length)),
+            TransactionDesc = payment.Description.Length > 20 ? payment.Description.Substring(0, 20) : payment.Description
         };
 
-        // 4. Send the STK Push
+        logger.LogInformation("🚀 Sending STK Push request to Daraja...");
+
+        // 3. Send the STK Push
         var response = await darajaService.SendStkPushAsync(baseUrl, accessToken, stkRequest);
 
-        // 5. Update the payment with the provider reference
-        if (response.ResponseCode == "0") // "0" means success in Daraja
+        // 4. Update the payment
+        if (response.ResponseCode == "0")
         {
-            payment.Status = "Processing"; // Waiting for the user to enter their PIN
+            payment.Status = "Processing";
             payment.ProviderReference = response.CheckoutRequestID;
+            logger.LogInformation("✅ STK Push sent successfully! CheckoutRequestID: {Id}", response.CheckoutRequestID);
         }
         else
         {
             payment.Status = "Failed";
             payment.FailureReason = response.ResponseDescription;
+            logger.LogWarning("❌ STK Push rejected: {Reason}", response.ResponseDescription);
         }
 
         await context.SaveChangesAsync();

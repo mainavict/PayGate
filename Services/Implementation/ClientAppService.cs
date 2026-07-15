@@ -23,6 +23,7 @@ public class ClientAppService(AppDbContext context, IEncryptionService encryptio
             Name = dto.Name, Environment = dto.Environment, TenantId = dto.TenantId,
             ApiKeyHash = apiKeyHash, RateLimitPerMinute = dto.RateLimitPerMinute,
             DarajaConsumerKey = encryptionService.Encrypt(dto.DarajaConsumerKey),
+            
             DarajaConsumerSecret = encryptionService.Encrypt(dto.DarajaConsumerSecret),
             DarajaPassKey = encryptionService.Encrypt(dto.DarajaPassKey),
             DarajaShortCode = dto.DarajaShortCode, DarajaCallbackUrl = dto.DarajaCallbackUrl,

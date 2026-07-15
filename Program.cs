@@ -4,7 +4,7 @@ using PayGate.Services.Interfaces;
 using PayGate.Services.Implementation;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.DataProtection;
-
+using   PayGate.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database
@@ -27,6 +27,7 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IClientAppService, ClientAppService>();
 builder.Services.AddHttpClient<IDarajaService, DarajaService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>(); 
+builder.Services.AddScoped<IUserService, UserService>();
 // 5. CORS
 builder.Services.AddCors(options =>
 {
@@ -49,6 +50,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowNextJs");
 app.UseHttpsRedirection();
+app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
 app.MapControllers();
 
 app.Run();
