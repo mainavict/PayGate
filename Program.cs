@@ -5,6 +5,10 @@ using PayGate.Services.Implementation;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.DataProtection;
 using   PayGate.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database
@@ -15,7 +19,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient(); 
-
 // 3. Data Protection
 builder.Services.AddDataProtection()
     .SetApplicationName("PayGate")
@@ -37,6 +40,23 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "PayGate",
+            ValidAudience = "PayGateUsers",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"])) 
+        };
+    });
+
+builder.Services.AddAuthorization();
+    
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -50,6 +70,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowNextJs");
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
 app.MapControllers();
 

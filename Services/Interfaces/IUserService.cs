@@ -10,4 +10,6 @@ public interface IUserService
     
     // We will need this later for the Login/Auth system
     Task<User?> GetUserByEmailAsync(string email); 
+    
+    Task<AuthResponseDto> LoginAsync(LoginDto dto);
 }

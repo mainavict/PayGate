@@ -71,7 +71,7 @@ public class PaymentService(
         {
             payment.Status = "Failed";
             payment.FailureReason = ex.Message;
-            logger.LogError(ex, "❌ Payment {PaymentId} failed: {Error}", payment.Id, ex.Message);
+            logger.LogError(ex, " Payment {PaymentId} failed: {Error}", payment.Id, ex.Message);
             await context.SaveChangesAsync();
             throw;
         }
@@ -105,9 +105,6 @@ public class PaymentService(
         // 1. Get Access Token
         var accessToken = await darajaService.GetAccessTokenAsync(consumerKey, consumerSecret, baseUrl);
         logger.LogInformation("✅ Got Daraja access token");
-
-        // 🔑 KEY FIX: Use DateTime.Now (local time) instead of DateTime.UtcNow!
-        // This matches your reference code and is likely why it was failing
         
         var  a= "174379";
         var b = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";

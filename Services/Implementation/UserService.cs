@@ -1,3 +1,7 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using PayGate.Data;
 using PayGate.DTOs;
@@ -8,6 +12,47 @@ namespace PayGate.Services.Implementation;
 
 public class UserService(AppDbContext context) : IUserService
 {
+    public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new Exception("Invalid email or password.");
+ 
+        // Verify the password
+        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
+        if (!isPasswordValid)
+            throw new Exception("Invalid email or password.");
+
+       
+        var  token = new JwtSecurityTokenHandler();
+
+        return new AuthResponseDto
+        {
+            Token = token.WriteToken(new JwtSecurityToken(
+                claims: new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName)
+                },
+                expires: DateTime.UtcNow.AddHours(1),
+                signingCredentials: new SigningCredentials(
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes("YourSuperSecretKeyHere")), 
+                    SecurityAlgorithms.HmacSha256)
+            )),
+            User = new UserResponseDto
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt
+            }
+        };
+    }
+    
+    
+
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto dto)
     {
         // 1. Check if email already exists
