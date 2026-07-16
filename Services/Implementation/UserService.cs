@@ -1,8 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration; // <-- 1. Add this using statement
+using Microsoft.IdentityModel.Tokens;
 using PayGate.Data;
 using PayGate.DTOs;
 using PayGate.Models;
@@ -10,7 +11,8 @@ using PayGate.Services.Interfaces;
 
 namespace PayGate.Services.Implementation;
 
-public class UserService(AppDbContext context) : IUserService
+// 2. Add IConfiguration to the constructor
+public class UserService(AppDbContext context, IConfiguration configuration) : IUserService
 {
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
@@ -23,12 +25,20 @@ public class UserService(AppDbContext context) : IUserService
         if (!isPasswordValid)
             throw new Exception("Invalid email or password.");
 
-       
-        var  token = new JwtSecurityTokenHandler();
+        if (!user.IsActive)
+            throw new Exception("User account is deactivated.");
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var secretKey = configuration["Jwt:SecretKey"] ?? "PayGateSuperSecretKeyForJWTGeneration2026!MustBeLongEnough";
+        
+        var keyBytes = Encoding.UTF8.GetBytes(secretKey);
 
         return new AuthResponseDto
         {
-            Token = token.WriteToken(new JwtSecurityToken(
+            Token = tokenHandler.WriteToken(new JwtSecurityToken(
+                issuer: "PayGate",
+                audience: "PayGateUsers",
                 claims: new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -37,7 +47,7 @@ public class UserService(AppDbContext context) : IUserService
                 },
                 expires: DateTime.UtcNow.AddHours(1),
                 signingCredentials: new SigningCredentials(
-                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes("YourSuperSecretKeyHere")), 
+                    new SymmetricSecurityKey(keyBytes), // <-- 4. Use the dynamic key here
                     SecurityAlgorithms.HmacSha256)
             )),
             User = new UserResponseDto
@@ -51,8 +61,6 @@ public class UserService(AppDbContext context) : IUserService
         };
     }
     
-    
-
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto dto)
     {
         // 1. Check if email already exists
@@ -65,7 +73,8 @@ public class UserService(AppDbContext context) : IUserService
         {
             FullName = dto.FullName,
             Email = dto.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) // 🔒 SECURE HASH
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            IsActive = true // New users are active by default
         };
 
         context.Users.Add(user);
