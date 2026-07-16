@@ -12,7 +12,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// Register a new user (Admin/Merchant)
     /// </summary>
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] CreateUserDto dto)
+    public async Task<ActionResult<UserResponseDto>> Register([FromBody] CreateUserDto dto)
     {
         try
         {
@@ -29,7 +29,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// Authenticate user and return JWT Token
     /// </summary>
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         try
         {
@@ -46,7 +46,7 @@ public class UsersController(IUserService userService) : ControllerBase
     /// Get user profile by ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetUserById(Guid id)
+    public async Task<ActionResult<UserResponseDto>> GetUserById(Guid id)
     {
         var user = await userService.GetUserByIdAsync(id);
         if (user == null) return NotFound(new { message = "User not found" });

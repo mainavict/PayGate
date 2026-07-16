@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using PayGate.DTOs;
 using PayGate.Services.Interfaces;
+using  PayGate.Models;
+
 
 namespace PayGate.Controllers;
 
@@ -9,7 +11,7 @@ namespace PayGate.Controllers;
 public class PaymentsController(IPaymentService paymentService) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentDto dto)
+    public async Task<ActionResult<Payment>> CreatePayment([FromBody] CreatePaymentDto dto)
     {
         // 1. Get the ClientAppId that the Middleware attached to the context
         if (!HttpContext.Items.TryGetValue("ClientAppId", out var clientAppIdObj) || clientAppIdObj == null)
@@ -39,7 +41,7 @@ public class PaymentsController(IPaymentService paymentService) : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetPayment(Guid id)
+    public async Task<ActionResult<Payment>> GetPayment(Guid id)
     {
         var payment = await paymentService.GetPaymentByIdAsync(id);
         if (payment == null) return NotFound();
