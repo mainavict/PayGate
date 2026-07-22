@@ -11,8 +11,8 @@ public class ClientAppService(AppDbContext context, IEncryptionService encryptio
 {
     public async Task<ClientAppResponseDto> CreateClientAppAsync(CreateClientAppDto dto)
     {
-        var tenant = await context.Tenants.FindAsync(dto.TenantId);
-        if (tenant == null) throw new Exception($"Tenant {dto.TenantId} not found.");
+        var owner = await context.Users.FindAsync(dto.OwnerId);
+        if (owner == null) throw new Exception($"Tenant {dto.OwnerId} not found.");
 
         var prefix = dto.Environment == "Production" ? "pg_live_" : "pg_test_";
         var plainTextApiKey = SecurityHelper.GenerateSecureApiKey(prefix);
@@ -20,7 +20,7 @@ public class ClientAppService(AppDbContext context, IEncryptionService encryptio
 
         var app = new ClientApp
         {
-            Name = dto.Name, Environment = dto.Environment, TenantId = dto.TenantId,
+            Name = dto.Name, Environment = dto.Environment, OwnerId = dto.OwnerId,
             ApiKeyHash = apiKeyHash, RateLimitPerMinute = dto.RateLimitPerMinute,
             DarajaConsumerKey = encryptionService.Encrypt(dto.DarajaConsumerKey),
             
@@ -45,9 +45,9 @@ public class ClientAppService(AppDbContext context, IEncryptionService encryptio
         };
     }
 
-    public async Task<IEnumerable<ClientAppResponseDto>> GetClientAppsByTenantIdAsync(Guid tenantId)
+    public async Task<IEnumerable<ClientAppResponseDto>> GetClientAppsByOwnerIdAsync(Guid OwnerId)
     {
-        var apps = await context.ClientApps.Where(c => c.TenantId == tenantId).ToListAsync();
+        var apps = await context.ClientApps.Where(c => c.OwnerId == OwnerId).ToListAsync();
         return apps.Select(app => new ClientAppResponseDto
         {
             Id = app.Id, Name = app.Name, Environment = app.Environment,

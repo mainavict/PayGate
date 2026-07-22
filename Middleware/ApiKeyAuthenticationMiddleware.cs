@@ -1,8 +1,6 @@
 using PayGate.Data;
-using PayGate.Utils;
-using System.Security.Cryptography;
-using System.Text;
-using  Microsoft.EntityFrameworkCore;
+using PayGate.Utils; // Assuming SecurityHelper is here
+using Microsoft.EntityFrameworkCore;
 
 namespace PayGate.Middleware;
 
@@ -19,19 +17,17 @@ public class ApiKeyAuthenticationMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        
-        var path = context.Request.Path.Value ?? string.Empty; 
-        // 1. Skip authentication for development tools and health checks
-        if (context.Request.Path.StartsWithSegments("/scalar") || 
-            context.Request.Path.StartsWithSegments("/openapi") ||
-            context.Request.Path.StartsWithSegments("/postman")||
-            context.Request.Path.StartsWithSegments("/api/health")||
-            context.Request.Path.StartsWithSegments("/webhooks")||
-            context.Request.Path.StartsWithSegments("/api/users")||
-            context.Request.Path.StartsWithSegments("/api/Tenants") ||
-            context.Request.Path.StartsWithSegments("/api/ClientApps")   
-            )
-            
+        // ✅ NEW (Correct)
+// context.Request.Path is a PathString, which has the StartsWithSegments method!
+        var path = context.Request.Path; 
+
+        if (path.StartsWithSegments("/scalar") || 
+            path.StartsWithSegments("/openapi") ||
+            path.StartsWithSegments("/postman") ||
+            path.StartsWithSegments("/api/health") ||
+            path.StartsWithSegments("/webhooks") || 
+            path.StartsWithSegments("/api/users") || 
+            path.StartsWithSegments("/api/ClientApps")) 
         {
             await _next(context);
             return;
@@ -46,11 +42,10 @@ public class ApiKeyAuthenticationMiddleware
         }
 
         // 3. Hash the incoming key to compare with the database
-        var hashedKey = SecurityHelper.HashApiKey(extractedApiKey);
+        // Note: extractedApiKey is a StringValues, so we call .ToString()
+        var hashedKey = SecurityHelper.HashApiKey(extractedApiKey.ToString());
 
         // 4. Look up the Client App in the database
-        // Note: We use a service locator pattern here for simplicity in middleware, 
-        // or we can inject the DB context directly.
         var dbContext = context.RequestServices.GetRequiredService<AppDbContext>();
         var clientApp = await dbContext.ClientApps
             .FirstOrDefaultAsync(c => c.ApiKeyHash == hashedKey && c.IsActive);
@@ -63,12 +58,13 @@ public class ApiKeyAuthenticationMiddleware
             return;
         }
 
-        // 5. Attach the ClientAppId and TenantId to the HttpContext
-        // This allows our Controllers and Services to know who is making the request.
+        // 5. Attach the ClientAppId and OwnerId to the HttpContext
+        // 🔥 UPDATED: No more TenantId. We now use OwnerId directly.
+        // This allows our Controllers and Services to know exactly which User/App is making the request.
         context.Items["ClientAppId"] = clientApp.Id;
-        context.Items["TenantId"] = clientApp.TenantId;
+        context.Items["OwnerId"] = clientApp.OwnerId; 
 
-        // 6. Update last used time (Optional, good for analytics)
+        // 6. Update last used time (Optional, but excellent for analytics and rate limiting)
         clientApp.LastUsedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 

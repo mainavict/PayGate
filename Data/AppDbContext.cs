@@ -42,8 +42,11 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.ApiKeyHash).IsUnique();
-            entity.HasIndex(e => e.TenantId);
-            entity.HasOne(e => e.Tenant).WithMany(t => t.ClientApps).HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         });
 
         modelBuilder.Entity<User>(entity =>

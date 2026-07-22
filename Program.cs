@@ -26,7 +26,6 @@ builder.Services.AddDataProtection()
 
 // 4. Services
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
-builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IClientAppService, ClientAppService>();
 builder.Services.AddHttpClient<IDarajaService, DarajaService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>(); 

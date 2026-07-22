@@ -28,6 +28,7 @@ public class ClientApp
     public string? StripeWebhookSecret { get; set; }
 
     // Navigation
-    public Guid TenantId { get; set; }
-    public Tenant Tenant { get; set; } = null!;
+    public Guid OwnerId { get; set; }
+    public User Owner { get; set; } = null!;
+   
 }

@@ -4,7 +4,7 @@ public class CreateClientAppDto
 {
     public string Name { get; set; } = string.Empty;
     public string Environment { get; set; } = "Sandbox";
-    public Guid TenantId { get; set; }
+    public Guid OwnerId { get; set; }
     public int RateLimitPerMinute { get; set; } = 100;
 
     public string? DarajaConsumerKey { get; set; }

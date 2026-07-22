@@ -25,7 +25,7 @@ public class ClientAppsController(IClientAppService clientAppService) : Controll
     [HttpGet("tenant/{tenantId}")]
     public async Task<ActionResult<IEnumerable<ClientAppResponseDto>>> GetClientAppsByTenant(Guid tenantId)
     {
-        var clientApps = await clientAppService.GetClientAppsByTenantIdAsync(tenantId);
+        var clientApps = await clientAppService.GetClientAppsByOwnerIdAsync(tenantId);
         return Ok(clientApps);
     }
 }
