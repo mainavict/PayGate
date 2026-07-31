@@ -31,7 +31,7 @@ builder.Services.AddScoped<IClientAppService, ClientAppService>();
 builder.Services.AddHttpClient<IDarajaService, DarajaService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>(); 
 builder.Services.AddScoped<IUserService, UserService>();
-
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 
 // 5. CORS
@@ -63,6 +63,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
     
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var encryption = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
+    try
+    {
+        var test = encryption.Encrypt("healthcheck");
+        encryption.Decrypt(test);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Data Protection key ring is broken — encryption round-trip failed at startup.");
+        throw; // fail fast rather than start in a broken state
+    }
+}
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
