@@ -45,7 +45,7 @@ public class WebhooksController(AppDbContext context, ILogger<WebhooksController
             
             // Extract the M-Pesa Receipt Number (e.g., "NLJ71U8V9K")
             var receipt = stkCallback.CallbackMetadata?.Item?
-                .FirstOrDefault(i => i.Name == "MpesaReceiptNumber")?.Value;
+                .FirstOrDefault(i => i.Name == "MpesaReceiptNumber")?.ValueAsString();
             
             if (!string.IsNullOrEmpty(receipt))
             {

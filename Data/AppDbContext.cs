@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PayGate.Models;
 
 namespace PayGate.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : DbContext, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -13,6 +14,9 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<WebhookLog> WebhookLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+
+    // Required by IDataProtectionKeyContext — stores the Data Protection key ring in Postgres
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,5 +73,8 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
         });
+
+        // DataProtectionKey has its own default mapping via IDataProtectionKeyContext —
+        // no explicit config block needed unless you want to customize the table name/schema.
     }
 }

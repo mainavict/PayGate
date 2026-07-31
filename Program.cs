@@ -8,7 +8,7 @@ using   PayGate.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Database
@@ -22,6 +22,7 @@ builder.Services.AddHttpClient();
 // 3. Data Protection
 builder.Services.AddDataProtection()
     .SetApplicationName("PayGate")
+     .PersistKeysToDbContext<AppDbContext>()
     .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
 
 // 4. Services
@@ -30,6 +31,9 @@ builder.Services.AddScoped<IClientAppService, ClientAppService>();
 builder.Services.AddHttpClient<IDarajaService, DarajaService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>(); 
 builder.Services.AddScoped<IUserService, UserService>();
+
+
+
 // 5. CORS
 builder.Services.AddCors(options =>
 {
@@ -38,6 +42,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
+
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

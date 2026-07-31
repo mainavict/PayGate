@@ -148,3 +148,4 @@ C:\Users\victor\Developent\PayGate\bin\Debug\net10.0\Microsoft.IdentityModel.Pro
 C:\Users\victor\Developent\PayGate\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\victor\Developent\PayGate\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\victor\Developent\PayGate\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\victor\Developent\PayGate\bin\Debug\net10.0\Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.dll

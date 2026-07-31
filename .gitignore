@@ -1,0 +1,7 @@
+# Ignore sensitive configuration files
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+
+# Ignore any file that might contain secrets (optional but recommended)
+*.secrets.json

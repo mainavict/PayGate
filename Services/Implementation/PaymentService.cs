@@ -96,7 +96,7 @@ public class PaymentService(
 
         logger.LogInformation("🔑 Decrypted Daraja keys successfully");
         logger.LogInformation("📱 ShortCode: {ShortCode}", shortCode);
-        logger.LogInformation("🔗 Callback URL: {CallbackUrl}", callbackUrl);
+        logger.LogInformation("Callback URL: {CallbackUrl}", callbackUrl);
 
         var baseUrl = clientApp.Environment == "Production" 
             ? "https://api.safaricom.co.ke" 
@@ -104,7 +104,7 @@ public class PaymentService(
 
         // 1. Get Access Token
         var accessToken = await darajaService.GetAccessTokenAsync(consumerKey, consumerSecret, baseUrl);
-        logger.LogInformation("✅ Got Daraja access token");
+        logger.LogInformation("Got Daraja access token");
         
         var  a= "174379";
         var b = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
@@ -118,8 +118,8 @@ public class PaymentService(
         if (phoneNumber.StartsWith("0")) phoneNumber = "254" + phoneNumber.Substring(1);
         if (!phoneNumber.StartsWith("254")) phoneNumber = "254" + phoneNumber;
 
-        logger.LogInformation("📞 Formatted Phone: {Phone}", phoneNumber);
-        logger.LogInformation("💰 Amount: {Amount}", payment.Amount);
+        logger.LogInformation("Formatted Phone: {Phone}", phoneNumber);
+        logger.LogInformation("Amount: {Amount}", payment.Amount);
 
         // 2. Build the STK Push Request
         var stkRequest = new DarajaStkPushRequest

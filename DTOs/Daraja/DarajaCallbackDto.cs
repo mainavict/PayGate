@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace PayGate.DTOs.Daraja;
 
@@ -44,5 +45,12 @@ public class CallbackItem
     public string? Name { get; set; }
     
     [JsonPropertyName("Value")]
-    public string? Value { get; set; } 
+    public JsonElement Value { get; set; }
+
+    public string? ValueAsString() => Value.ValueKind switch
+    {
+        JsonValueKind.String => Value.GetString(),
+        JsonValueKind.Number => Value.ToString(),
+        _ => null
+    };
 }
