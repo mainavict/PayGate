@@ -5,8 +5,6 @@ WORKDIR /src
 # Copy csproj and restore as distinct layers
 COPY ["PayGate.csproj", "./"]
 RUN dotnet restore "./PayGate.csproj"
-
-# Copy everything else and build
 COPY . .
 RUN dotnet build "./PayGate.csproj" -c Release -o /app/build
 
@@ -17,6 +15,10 @@ RUN dotnet publish "./PayGate.csproj" -c Release -o /app/publish /p:UseAppHost=f
 # 3. Final Stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 8080
 EXPOSE 8081
 
