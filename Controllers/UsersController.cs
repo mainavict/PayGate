@@ -6,6 +6,7 @@ namespace PayGate.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/auth")]
 public class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>
@@ -51,5 +52,72 @@ public class UsersController(IUserService userService) : ControllerBase
         var user = await userService.GetUserByIdAsync(id);
         if (user == null) return NotFound(new { message = "User not found" });
         return Ok(user);
+    }
+
+    /// <summary>
+    /// Initiate forgot password and dispatch OTP to registered email
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email))
+        {
+            return BadRequest(new { message = "Email is required." });
+        }
+
+        try
+        {
+            await userService.ForgotPasswordAsync(dto);
+            return Ok(new { success = true, message = "Verification code sent to your email." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Verify OTP code for password recovery
+    /// </summary>
+    [HttpPost("confirm-otp")]
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> ConfirmOtp([FromBody] ConfrimOTPDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.OTP))
+        {
+            return BadRequest(new { message = "Email and OTP code are required." });
+        }
+
+        try
+        {
+            var isValid = await userService.ConfrimOTPAsync(dto);
+            return Ok(new { success = isValid, message = "OTP verified successfully." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Set a new password using verified OTP
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.NewPassword))
+        {
+            return BadRequest(new { message = "Email and new password are required." });
+        }
+
+        try
+        {
+            await userService.ResetPasswordAsync(dto);
+            return Ok(new { success = true, message = "Password has been successfully reset." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

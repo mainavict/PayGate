@@ -11,8 +11,8 @@ using PayGate.Services.Interfaces;
 
 namespace PayGate.Services.Implementation;
 
-// 2. Add IConfiguration to the constructor
-public class UserService(AppDbContext context, IConfiguration configuration) : IUserService
+// 2. Add IConfiguration and IEmailServices to the constructor
+public class UserService(AppDbContext context, IConfiguration configuration, IEmailServices emailServices) : IUserService
 {
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
@@ -109,5 +109,36 @@ public class UserService(AppDbContext context, IConfiguration configuration) : I
     public async Task<User?> GetUserByEmailAsync(string email)
     {
         return await context.Users.FirstOrDefaultAsync(u => u.Email == email);
+    }
+
+
+    public async Task<bool> ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new Exception("A user with this email does not exist.");
+
+        var otp = Random.Shared.Next(100000, 999999).ToString();
+        return await emailServices.SendOtpEmailAsync(user.Email, otp, "Password Reset");
+    }
+
+    public async Task<bool> ConfrimOTPAsync(ConfrimOTPDto dto)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new Exception("A user with this email does not exist.");
+
+        return true;
+    }
+
+    public async Task<bool> ResetPasswordAsync(ResetPasswordDto dto)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new Exception("A user with this email does not exist.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        await context.SaveChangesAsync();
+        return true;
     }
 }

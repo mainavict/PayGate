@@ -29,9 +29,9 @@ builder.Services.AddDataProtection()
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<IClientAppService, ClientAppService>();
 builder.Services.AddHttpClient<IDarajaService, DarajaService>();
+builder.Services.AddHttpClient<IEmailServices, EmailService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>(); 
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 
 // 5. CORS
