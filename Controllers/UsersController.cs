@@ -6,7 +6,7 @@ namespace PayGate.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Route("api/auth")]
+
 public class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>
@@ -79,7 +79,6 @@ public class UsersController(IUserService userService) : ControllerBase
     /// <summary>
     /// Verify OTP code for password recovery
     /// </summary>
-    [HttpPost("confirm-otp")]
     [HttpPost("verify-otp")]
     public async Task<IActionResult> ConfirmOtp([FromBody] ConfrimOTPDto dto)
     {

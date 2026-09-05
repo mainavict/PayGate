@@ -6,7 +6,6 @@ namespace PayGate.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Route("api/email")]
 public class EmailsController(IEmailServices emailServices) : ControllerBase
 {
     /// <summary>
